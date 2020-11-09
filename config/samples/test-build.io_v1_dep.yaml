@@ -1,0 +1,7 @@
+apiVersion: test-build.io.testbuilder.io/v1
+kind: Dep
+metadata:
+  name: dep-sample
+spec:
+  # Add fields here
+  foo: bar

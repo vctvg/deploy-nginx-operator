@@ -1,0 +1,7 @@
+domain: testbuilder.io
+repo: test.io
+resources:
+- group: test-build.io
+  kind: Dep
+  version: v1
+version: "2"

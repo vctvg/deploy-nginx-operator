@@ -1,0 +1,20 @@
+# permissions for end users to view deps.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: dep-viewer-role
+rules:
+- apiGroups:
+  - test-build.io.testbuilder.io
+  resources:
+  - deps
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - test-build.io.testbuilder.io
+  resources:
+  - deps/status
+  verbs:
+  - get
