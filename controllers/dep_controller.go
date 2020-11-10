@@ -50,8 +50,8 @@ func (r *DepReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
 	// your logic here
 	// init dep
-	newresource := testbuildiov1.Dep{}
-	err := r.Get(ctx, req.NamespacedName, &newresource)
+	dep := testbuildiov1.Dep{}
+	err := r.Get(ctx, req.NamespacedName, &dep)
 	if err != nil {
 		log.Error(err, "cannot found")
 		if errors.IsNotFound(err) {
@@ -59,25 +59,53 @@ func (r *DepReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		}
 	}
 
+	// setup finalizer
+	testFinalizerName := "testfinailizer"
+	if dep.ObjectMeta.DeletionTimestamp.IsZero(){
+		if !containsString(dep.ObjectMeta.Finalizers, testFinalizerName){
+			dep.ObjectMeta.Finalizers = append(dep.ObjectMeta.Finalizers, testFinalizerName)
+			err := r.Update(ctx, &dep)
+			if err != nil{
+				return ctrl.Result{}, err
+			}
+		}
+
+	} else {
+		if containsString(dep.ObjectMeta.Finalizers, testFinalizerName){
+			err := r.PreDelete(&dep)
+			if err != nil{
+				return ctrl.Result{}, err
+			}
+			dep.ObjectMeta.Finalizers = removeString(dep.ObjectMeta.Finalizers, testFinalizerName)
+			err = r.Update(ctx, &dep)
+			if err != nil{
+				return ctrl.Result{}, err
+			}
+		}
+		// Stop reconciliation as the item is being deleted
+		return ctrl.Result{}, nil
+	}
+
+
 	// change status
-	if !newresource.Status.Created {
-		newresource.Status.Created = true
-		r.Update(ctx, &newresource)
+	if !dep.Status.Created {
+		dep.Status.Created = true
+		r.Update(ctx, &dep)
 	}
 
 	// deploy nginx
 	deploynginxvar := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      newresource.Name + "nginx-deployment",
-			Namespace: newresource.Namespace,
+			Name:      dep.Name + "nginx-deployment",
+			Namespace: dep.Namespace,
 		},
 		Spec: appsv1.DeploymentSpec{
 			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{"app": newresource.Name + "nginx"},
+				MatchLabels: map[string]string{"app": dep.Name + "nginx"},
 			},
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{"app": newresource.Name + "nginx"},
+					Labels: map[string]string{"app": dep.Name + "nginx"},
 				},
 				Spec: v1.PodSpec{
 					Containers: []v1.Container{
@@ -91,7 +119,7 @@ func (r *DepReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		},
 	}
 
-	if err := controllerutil.SetControllerReference(&newresource, deploynginxvar, r.Scheme); err != nil {
+	if err := controllerutil.SetControllerReference(&dep, deploynginxvar, r.Scheme); err != nil {
 		log.Error(err, "failed set reference")
 		return reconcile.Result{}, err
 	}
@@ -109,4 +137,29 @@ func (r *DepReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&testbuildiov1.Dep{}).
 		Complete(r)
+}
+
+func containsString(slice []string, s string) bool {
+	for _, item := range slice{
+		if item == s {
+			return true
+		}
+	}
+	return false
+}
+
+func (r *DepReconciler)PreDelete(newresource *testbuildiov1.Dep) error{
+	// predelete logic
+
+	return nil
+}
+
+func removeString(slice []string, s string)(result []string) {
+	for _, item := range (slice) {
+		if item == s {
+			continue
+		}
+		result = append(result, item)
+	}
+	return
 }
