@@ -31,6 +31,8 @@ type DepSpec struct {
 	// Foo is an example field of Dep. Edit Dep_types.go to remove/update
 	Foo    string `json:"foo,omitempty"`
 	Detail string `json:"detail,omitempty"`
+	Replicas *int32 `json:"replicas,omitempty"`
+	Selector *metav1.LabelSelector `json:"selector,omitempty"`
 }
 
 // DepStatus defines the observed state of Dep
